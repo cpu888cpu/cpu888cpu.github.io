@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>桌面端预览</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #0b0f18; color: #cbd5e9;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  header {
+    padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    border-bottom: 1px solid #1b2436; position: sticky; top: 0; z-index: 9;
+    background: rgba(11,15,24,.92); backdrop-filter: blur(8px);
+  }
+  h1 { font-size: 13px; margin: 0; font-weight: 600; color: #e6edfb; letter-spacing: .03em; }
+  .tag { font-size: 11px; color: #6f83a4; border: 1px solid #1f2a3d; padding: 2px 6px; border-radius: 6px; }
+  .btns { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+  button {
+    font: inherit; font-size: 11px; color: #9fb2cf; background: #131b28;
+    border: 1px solid #223047; border-radius: 999px; padding: 5px 11px; cursor: pointer;
+  }
+  button.on { background: #1c3155; border-color: #3a5f9e; color: #cfe0ff; }
+  .stage { padding: 10px; overflow: auto; }
+  .wrap {
+    position: relative; overflow: hidden; margin: 0 auto;
+    border-radius: 10px; border: 1px solid #1d273a; background: #000;
+  }
+  iframe { display: block; border: 0; transform-origin: top left; background: #070b14; }
+  .hint { padding: 0 8px 14px; font-size: 11px; color: #5d6f8c; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>桌面端预览</h1>
+  <span class="tag" id="dims">1440 宽</span>
+  <div class="btns">
+    <button data-w="1440" class="on">1440</button>
+    <button data-w="1280">1280</button>
+    <button data-w="1024">1024</button>
+    <button data-w="768">768</button>
+    <button id="zoom">1:1</button>
+  </div>
+</header>
+
+<div class="stage" id="stage">
+  <div class="wrap" id="wrap"><iframe id="f" src="./index.html"></iframe></div>
+</div>
+<p class="hint">缩略显示是为了一屏看版式；点「1:1」切换真实像素，可左右滑动细看</p>
+
+<script>
+  const f = document.getElementById("f");
+  const wrap = document.getElementById("wrap");
+  const stage = document.getElementById("stage");
+  const dims = document.getElementById("dims");
+  const zoomBtn = document.getElementById("zoom");
+
+  let dw = 1440;
+  let dh = 1150;
+  let one = false;
+
+  function render() {
+    const avail = stage.clientWidth - 20;
+    const s = one ? 1 : Math.min(avail / dw, 1);
+    f.style.width = dw + "px";
+    f.style.height = dh + "px";
+    f.style.transform = "scale(" + s + ")";
+    wrap.style.width = dw * s + "px";
+    wrap.style.height = dh * s + "px";
+    wrap.style.overflow = one ? "visible" : "hidden";
+    dims.textContent = dw + " 宽" + (one ? " · 1:1" : " · 缩放 " + Math.round(s * 100) + "%");
+    setTimeout(refreshHeight, 300);
+  }
+
+  function refreshHeight() {
+    try {
+      const doc = f.contentDocument;
+      if (!doc || !doc.body || doc.readyState !== "complete") return;
+      // 用页脚底部定位，避免 body 的 min-height:100vh 把高度撑死
+      const foot = doc.querySelector(".footer");
+      const h = foot
+        ? Math.ceil(foot.getBoundingClientRect().bottom) + 22
+        : Math.max(doc.body.scrollHeight, 700);
+      if (Math.abs(h - dh) > 4) { dh = h; render(); }
+    } catch (e) {}
+  }
+
+  document.querySelectorAll("[data-w]").forEach((b) => {
+    b.onclick = () => {
+      document.querySelectorAll("[data-w]").forEach((x) => x.classList.remove("on"));
+      b.classList.add("on");
+      dw = Number(b.dataset.w);
+      one = false;
+      zoomBtn.classList.remove("on");
+      render();
+    };
+  });
+
+  zoomBtn.onclick = () => {
+    one = !one;
+    zoomBtn.classList.toggle("on", one);
+    render();
+  };
+
+  window.addEventListener("resize", render);
+  render();
+</script>
+
+</body>
+</html>
